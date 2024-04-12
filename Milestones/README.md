@@ -1,7 +1,8 @@
 # Project: Ontario Pre-Triage Application for Healthcare Facilities
 ## Current Project State
-- MS1 & MS2 release
-- MS3 & MS4 preview
+- MS1 & MS2 release <br /> V1.2 Clarified the insertion and extraction operator overloads
+- MS3 & MS4 release<br />V1.1 MS4 (removed deprecated methods, `csvRead and csvWrite`)
+- MS5 release(V1.0)<br />Times corrected in ouput samples
 
 ## Milestones
 
@@ -11,7 +12,7 @@
 | [MS2](#milestone-2) | V1.0 |    |
 | [MS3](#milestone-3) | V1.0  |    |
 | [MS4](#milestone-4) | V1.0  |   |
-| [MS5](#milestone-5) | V1.0 |   |
+| [MS5](#milestone-5) | V1.0 |  Times corrected in ouput samples |
 
 
 ## Use case
@@ -81,12 +82,12 @@ To ensure successful completion of the project within the given timeframe, I rec
 
 |Milestone 5<br/> Divided into<br/>Six submission| Description | Comments |
 |:------|:---|-------|
-| [m51](#milestone-51) |  | Mandatory, this is needed for the rest<br /> of the options to be functional|
-| [m52](#milestone-52) |  | Optional with 10% penalty |
-| [m53](#milestone-53) |  | Optional with 10% penalty |
-| [m54](#milestone-54) |  | Optional with 10% penalty |
-| [m55](#milestone-55) |  | Optional with 10% penalty |
-| [m56](#milestone-56) |  | Optional with 10% penalty |
+| [m51](#milestone-51) | Load, Save and exit test | Mandatory, this is needed for the rest<br /> of the options to be functional|
+| [m52](#milestone-52) | List Patients in the lineup | Optional with 10% penalty |
+| [m53](#milestone-53) | Admit Test Patients | Optional with 10% penalty |
+| [m54](#milestone-54) | Admit Triage Patients | Optional with 10% penalty |
+| [m55](#milestone-55) | Register Test Patients | Optional with 10% penalty |
+| [m56](#milestone-56) | Register Triage Patients and Full lineup test | Optional with 10% penalty |
 
 
 #### Milestones 1 to 4: Success and Timely Submissions
@@ -308,6 +309,8 @@ Time operator-(const Time& T)const;
 This operator performs the same calculation as the subtraction assignment `-=` overload, except that it does not have a side effect (i.e., it does not modify the current object).
 
 It returns a new `Time` object representing the time difference between the current `Time` object and the `Time` object `T`.
+
+### Helper Insertion and Extraction Overloads
 
 ```c++
 operator<<
@@ -779,14 +782,6 @@ The default constructor passes the **nextTestTicket** global variable to the **c
 ### the type() virtual function
 This function only returns the character **'C'**;
 
-### csvWrite virtual function override.
-This function only calls the **csvWrite** function of the base class **Patient** and returns the **ostream** reference.
-
-### csvRead virtual function override
-First this function will call the **csvRead** function of the base class **Patient**, then it will set the **nextTestTicket** global variable to the return value of the **number()** function of the **Patient** class plus **one**. 
-
-Finally, it will return the ~~ostream~~ istream reference.
-
 ### write virtual function override.
 If the ostream is cout it will insert **"Contagion TEST"** into the **ostream** object and goes to **newline**. 
 
@@ -914,6 +909,508 @@ and follow the instructions.
 ```
 
 
-# Milestone 5
+# Milestone 5 
 
-## TBA
+To start milestone 5, first, add the following template to **uitls.h**
+
+```c++
+   template <typename type>
+   void removeDynamicElement(type* array[], int index, int& size) {
+      delete array[index];
+      for (int j = index; j < size; j++) {
+         array[j] = array[j + 1];
+      }
+      size--;
+   }
+```
+This template will be used to remove a Patient from the lineup when admitted.
+
+## PreTriage Module
+
+To complete the implementation of the final project, implement a module called Pre-Triage.  This module creates a lineup of patients and issues tickets for them as they arrive at the healthcare facility.  Each patient in the lineup will be either a contagion Patient or a Triage Patient and will receive a ticket with a number that will be called when they are being admitted to either the contagion test centre or Triage Centre.
+
+### Overview of The PreTriage Module Execution
+
+The module gets instantiated by loading the data file holding the patients' records that are already in the lineup. This data file is created by the PreTriage Module at exit time. This makes this module a stateful module, which means when the module exits, it saves all the patients' information into a data file so that later, it can restart the application in the same state as the last execution (by loading the data file).
+
+If the data file does not exist or it is not readable, the module assumes that this is the first time it is being executed; and no patients are in the lineup.
+
+After loading the data, the result of the loading is reported and then the main menu of the application is displayed. See below:
+
+If there is no data file or a data file with no Patient records:
+```text
+Loading data...
+No data or bad data file!
+
+General Healthcare Facility Pre-Triage Application
+1- Register
+2- Admit
+0- Exit
+>
+```
+If there is a data file with patient lineup records:
+```text
+Loading data...
+16 Records imported...
+
+General Healthcare Facility Pre-Triage Application
+1- Register
+2- Admit
+0- Exit
+>
+```
+The user can then select either register or admit.
+
+> **Register**: This option is selected when a patient arrives at the healthcare facility. Afterwards, the program will display another menu to select the type of Patient and receive the patient's information. The Patient is then added to the lineup and a ticket is printed. 
+
+> **Admit**: This option is selected when either the Contagion or Triage centre is ready to accept the next patient. Afterwards, the program will display another menu to select the type of Patient and shows the information of the next patient in line. 
+
+> **Exit**: When this option is selected, the program exits saving the information of the patients in the lineup so it can be reloaded the next time.  See below:
+
+
+```text
+Loading data...
+16 Records imported...
+
+General Healthcare Facility Pre-Triage Application
+1- Register
+2- Admit
+3- View Lineup
+0- Exit
+> 0
+Saving lineup...
+7 Contagion Tests and 9 Triage records were saved!
+```
+## PreTriage constant maximum lineup value
+### Maximum Number of patients
+Add a constant value to be used for the maximum number of patients in the lineup (Contagion and Triage combined). Set this value to `100`.
+
+## PreTriage class 
+### Attributes:
+#### Wait times
+Add two Time object attributes to the class to keep track of the average wait time for the Contaigen test and the Triage patients separately.
+#### Patient Lineup.
+Create an array of pointers to `Patient` objects. The size of this array should be set to the `maximum lineup value` constant. These pointers should be `nullptr` when the `PreTirage` class is instantiated. 
+
+> When Patients arrive, they will be dynamically instantiated and their addresses will be kept in the elements of this array. See `register()` method
+
+#### Data Filename
+A C-string to hold the path and name of the data file.
+
+#### Number of patients in the lineup
+Create an attribute to hold the actual number of patients in the lineup. This number can not exceed the maximum lineup value.
+### Constructor
+A `PreTriage` class is instantiated using the data file name. This data file name is stored in the data filename attribute for load and save purposes.
+The constructor also initializes the two Time attributes, Contagion test and Triage, to 15 and 5 respectively.
+> These Time values may be overwritten by the corresponding values in the data file, if present.
+The constructor then loads all the data from the data file, if possible.
+### Destructor
+- Saves the data. 
+- Iterates through the patient lineup and deletes the elements one by one.
+- If there are any other dynamically allocated memory, it will delete them as well. 
+
+### Private Methods
+
+#### getWaitTime  (Query)
+Receives a constant Patient Reference and returns the total estimated wait time for that type of Patient (contagion or Triage) as follows:
+
+- Find the number of Patients in the lineup that match the type of the received Patient Reference. 
+
+- Returns the product of estimated wait time (for that type of patient) to the number of patients found.
+> This method does not change the state of the class. 
+
+#### setAverageWaitTime (Modifier)
+Receives the reference of the admitting patient and adjusts the average wait time of that type of patient based on the admittance time of the patient.
+
+Modify and set the value of the average wait time  of the corresponding patient using the following formula:  
+```text
+CT: Current Time
+PTT: Patient's Ticket Time
+AWT: Average Wait Time (Contagion or Triage)
+PTN: Patient's Ticket Number
+AWT = ((CT - PTT) + (AWT * (PTN - 1))) / PTN
+```
+
+#### indexOfFirstInLine   (Query)
+Receives a character representing the type of patient (`C` for Contaigen, `T` for Triage).
+
+Finds the index of the first patient in line that matches a specified type.
+
+This function iterates over the lineup array of pointers from the beginning. For each patient, it compares the patient's type with the specified type (using overloaded operator==). If a match is found, the function returns the found index. If the function iterates over the entire lineup without finding a match, it returns -1
+
+#### load (Modifier)
+Loads the average wait times and the patient records from the data file and stores them in the lineup array of pointers.
+- print `"Loading data..."`, goto newline
+- read the contagion test average wait time from the data file
+- ignore the comma
+- read the triage average wait time from the data file
+- ignore the newline
+- pseudo-code:
+```text
+Create a local patient-pointer
+In a loop from 0 to the maximum number of patients (or up to when reading fails)
+    read the first character and ignore the comma
+    if the character is 'C'
+       in the current patient-pointer element instantiate a Contagion Test Patient
+    otherwise, if the character is 'T'
+       in the current patient-pointer element instantiate a Triage Patient
+    endif
+    If Instantiation successful
+       Read the patient information from the file
+       Add the local pointer value to the patient lineup array
+       increase the lineup size
+    end if
+end loop
+```
+- At the end print these messages and go to newline:
+- if there are still records left in the file, print the following warning:  
+'"Warning: number of records exceeded"' and then print the maximum number of records, for example:
+```text
+Warning: number of records exceeded 100
+```
+- if no records were read print `"No data or bad data file!"` otherwise, print `"###  Records imported..."` (### is replaced with the number of records read)
+
+- Examples:
+```text
+Loading data...
+Warning: number of records exceeded 100
+100 Records imported...
+```
+```text
+Loading data...
+16 Records imported...
+```
+```text
+Loading data...
+No data or bad data file!
+```
+#### save (Query)
+- Opens the data file for output.
+- Inserts "Saving lineup...", into cout and goes to newline
+- Inserts the average Contaigen Test and Triage wait times, comma-separated into the data file and goes to newline.
+3. Iterates through the lineup array of Patient pointers
+   - Inserts them into the data file and goes to newline
+4. Inserts the number of records saved for each type of patient into cout and goes to newline
+> See the `Exit` option description for sample output.
+
+#### register (Modifier)
+Registers a new patient:
+
+Create a Menu object for a sub-menu for patient type selection with one indentation (1 tab) as follows to be displayed later.
+```text
+   Select Type of Registration:
+   1- Contagion Test
+   2- Triage
+   0- Exit
+   >
+```
+- If the lineup size has reached the maximum number of patients, print `"Line up full!"`, go to a new line and terminate the function
+- display the sub-menu and receive the selection
+- if the selection is 1, in the next available lineup pointer instantiate a Contagion Test Patient
+- if the selection is 2, in the next available lineup pointer instantiate a Triage Patient
+- if the selection is 0, terminate the function
+- set the patient's arrival time 
+- print: `"Please enter patient information: "`
+- extract the patient from cin
+- go to newline
+- Print the ticket
+   - print: `"******************************************"`
+   - go to newline
+   - insert the patient into cout
+   - print: `"Estimated Wait Time: "`
+   - print the return value of **getWaitTime** for the patient.
+   - go to newline
+   - print: `"******************************************"`
+   - go to newline twice
+- increase the lineup size.
+
+#### admit (Modifier)
+Calls the next patient in line to be admitted to the contagion test centre or Triage centre
+
+Create a Menu object for a sub-menu for patient type selection with one indentation (1 tab) as follows to be displayed later.
+
+```text
+   Select Type of Admittance:
+   1- Contagion Test
+   2- Triage
+   0- Exit
+   > 0
+```
+
+- display the sub-menu and receive the selection to determine the type of patient to admit.
+- if the selection is 1, the type is 'C'
+- if the selection is 2, the type is 'T'
+- if the selection is 0, terminate the function
+- find the index of the next patient in the line for the type (use **indexOfFirstInLine** method)
+- if no patient is found, print `"Lineup is empty!\n"` and terminate the function
+- go to newline
+- print: `"******************************************"`
+- go to newline
+- print: `"Call time [H:M]"`
+- go to newline
+- print: `"Calling for "`
+- insert the patient into cout
+- print: `"******************************************"`
+- go to newline twice
+- set the average wait time for the patient (using setAverageWaitTime method)
+- remove the patient from the lineup using the `removeDynamicElement` function template.
+
+#### lineup (Query)
+Prints a report on patients currently in the lineup.
+
+- display a sub-menu with one indentation as follows and get the user's selection.
+```text
+   Select The Lineup:
+   1- Contagion Test
+   2- Triage
+   0- Exit
+   >
+```
+- print the following header:
+```text
+Row - Patient name                                          OHIP     Tk #  Time
+-------------------------------------------------------------------------------
+```
+- iterate through the lineup array of patient pointers and insert only the type of patents selected by the user into clog.
+- if there are no patients in the lineup print `"Line up is empty!\n"` instead.
+- close the list by printing:
+```text
+-------------------------------------------------------------------------------
+```
+
+### Public method
+The following is the only mandatory method of the Pre-Triage class. 
+
+You are free to implement all the other PreTraige methods, any way you find fit as long as the run method functions exactly as requested.
+
+#### run (Modifier)
+Runs the PreTriage main application.
+
+Create the Main system menu as follows
+```
+General Healthcare Facility Pre-Triage Application
+1- Register
+2- Admit
+3- View Lineup
+0- Exit
+>
+```
+And get the user's selection.
+1. display the menu and get the selection
+2. if the selection is 0, quit the method
+3. if the selection is 1 call the **register** method
+4. if the selection is 2 call the **admit** method
+5. if the selection is 3 call the **lineup** method
+6. go back to 1
+
+
+
+### Submission
+
+Upload your source code and the tester program to your `matrix` account. Compile and run your code using the `g++` compiler [as shown in the introduction](#compiling-and-testing-your-program) and make sure that everything works properly.
+
+Then, run the following command from your account (replace `profname.proflastname` with your professor’s Seneca userid):
+```
+~profname.proflastname/submit 2??/prj/m??
+```
+and follow the instructions.
+
+- *2??* is replaced with your subject code
+- *m??* is replaceed with the milestone5 stages (i.e. m51, m52, etc...)
+
+### The submit program's options:
+```bash
+~prof_name.prof_lastname/submit DeliverableName [-submission options]<ENTER>
+[-submission option] acceptable values:
+  "-due":
+       Shows due dates only
+       This option cannot be used in combination with any other option.
+  "-skip_spaces":
+       Do the submission regardless of incorrect horizontal spacing.
+       This option may attract a penalty.
+  "-skip_blank_lines":
+       Do the submission regardless of incorrect vertical spacing.
+       This option may attract a penalty.
+  "-feedback":
+       Check the program execution without submission.
+```
+#### common files to submit for all MS5 submissions
+```text
+Utils.h
+Utils.cpp
+IOAble.cpp                                 
+IOAble.h                         
+Menu.cpp
+Menu.h
+Time.cpp
+Time.h
+Ticket.cpp
+Ticket.h
+Patient.cpp
+Patient.h
+TestPatient.cpp
+TestPatient.h
+TriagePatient.cpp
+TriagePatient.h
+PreTriage.cpp
+PreTriage.h
+```
+
+## Milestone 5.1  
+> This milestone is mandatory to submit.
+### Reflection
+
+As part of your project submission in milestone 5.1, we would like you to reflect on your experience working on the “General Healthcare Facility Pre-Triage Application”, in two or three paragraphs.  Please consider the following points:
+
+- Learnings:
+What new concepts or skills did you acquire during this project?
+How did your understanding of C evolve into C++, especially in terms of object orientation?    
+- Challenges:
+What were the most significant challenges you encountered while developing the application?
+How did you overcome these challenges, and what strategies did you employ?
+Feel free to share any insights, lessons learned, or personal growth you experienced throughout the project. Your reflections will provide valuable feedback and contribute to your overall learning journey.
+
+Thank you for your hard work, and we look forward to reading your thoughtful reflections!
+
+### Load, Save and exit test
+#### Files to add for MS5.1 submission
+```text
+ms51_test.cpp            
+reflect.txt
+```
+#### Data Entry
+```text
+0
+0
+0
+```
+#### Tester Program
+[ms51_test.cpp](ms5/ms51_test.cpp)
+
+#### Expected Output
+[ms51_correct_output.txt](ms5/ms51_correct_output.txt)
+
+## Milestone 5.2
+
+### List Patients in the lineup
+
+#### Files to add for MS5.2 submission
+```text
+ms52_test.cpp        
+```
+#### Data Entry
+```text
+3
+1
+3
+2
+0
+```
+#### Tester Program
+[ms52_test.cpp](ms5/ms52_test.cpp)
+
+#### Expected Output
+[ms52_correct_output.txt](ms5/ms52_correct_output.txt)
+
+
+## Milestone 5.3
+
+### Admit Test Patients
+
+#### Files to add for MS5.3 submission
+```text
+ms53_test.cpp        
+```
+#### Data Entry
+```text
+2
+1
+2
+1
+0
+```
+#### Tester Program
+[ms53_test.cpp](ms5/ms53_test.cpp)
+
+#### Expected Output
+[ms53_correct_output.txt](ms5/ms53_correct_output.txt)
+
+
+## Milestone 5.4
+
+### Admit Triage Patients
+
+#### Files to add for MS5.4 submission
+```text
+ms54_test.cpp        
+```
+#### Data Entry
+```text
+2
+2
+2
+2
+0
+```
+#### Tester Program
+[ms54_test.cpp](ms5/ms54_test.cpp)
+
+#### Expected Output
+[ms54_correct_output.txt](ms5/ms54_correct_output.txt)
+
+## Milestone 5.5
+
+### Register Test Patients
+
+#### Files to add for MS5.5 submission
+```text
+ms55_test.cpp        
+```
+#### Data Entry
+```text
+1
+1
+John Doe
+123123123
+1
+1
+Jane Doe
+234234234
+0
+```
+#### Tester Program
+[ms55_test.cpp](ms5/ms55_test.cpp)
+
+#### Expected Output
+[ms55_correct_output.txt](ms5/ms55_correct_output.txt)
+
+## Milestone 5.6
+
+### Register Triage Patients
+
+#### Files to add for MS5.6 submission
+```text
+ms56_test.cpp        
+```
+#### Data Entry
+```text
+1
+0
+1
+2
+John Doe
+123123123
+Stomach pain
+1
+2
+Jane Doe
+234234234
+Abdomen pain
+0
+```
+#### Tester Program
+[ms56_test.cpp](ms5/ms56_test.cpp)
+
+#### Expected Output
+[ms56_correct_output.txt](ms5/ms56_correct_output.txt)
+
