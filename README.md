@@ -1,6 +1,5 @@
 # OOP244
 Winter2024 OOP244 NFF
 
-All my works for OOP244
-- Workshops
-- Milestone
+
+A complete repo of the workshops and milestone that I have completed during the semester. 
